@@ -1,0 +1,110 @@
+// QR Code Scanner Web App
+// Dependencies: html5-qrcode library (https://github.com/mebjas/html5-qrcode)
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      height: 100vh;
+      background-color: #f9f9f9;
+    }
+
+    #reader {
+      width: 300px;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+
+    .message {
+      margin-top: 20px;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Scanner</h1>
+  <div id="reader"></div>
+  <div class="message" id="message">Ready to scan a QR code.</div>
+
+  <script>
+    const webhookUrl = "https://your-webhook-url.com/endpoint"; // Replace with your webhook URL
+
+    const messageDiv = document.getElementById("message");
+
+    function setMessage(text, type = "info") {
+      messageDiv.textContent = text;
+      messageDiv.className = `message ${type}`;
+    }
+
+    function sendToWebhook(data) {
+      return fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          qr_code_content: data,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+      setMessage("QR code scanned. Sending to webhook...", "info");
+
+      sendToWebhook(decodedText)
+        .then((response) => {
+          if (response.ok) {
+            setMessage("QR code processed successfully!", "success");
+          } else {
+            setMessage("Failed to process QR code. Please try again.", "error");
+          }
+        })
+        .catch((error) => {
+          console.error("Error sending to webhook:", error);
+          setMessage("Network error. Please check your connection.", "error");
+        });
+    }
+
+    function onScanFailure(error) {
+      // Handle scan errors here, if necessary (optional)
+      console.warn(`QR scan error: ${error}`);
+    }
+
+    const html5QrCode = new Html5Qrcode("reader");
+
+    html5QrCode.start(
+      { facingMode: "environment" }, // Use the back camera
+      {
+        fps: 10, // Frames per second for scanning
+        qrbox: { width: 250, height: 250 }, // Scanning box dimensions
+      },
+      onScanSuccess,
+      onScanFailure
+    ).catch((error) => {
+      console.error("Error starting QR code scanner:", error);
+      setMessage("Unable to access camera. Please check permissions.", "error");
+    });
+  </script>
+</body>
+</html>
